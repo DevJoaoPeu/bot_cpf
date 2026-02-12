@@ -1,0 +1,39 @@
+import axios from "axios";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+
+export const buscarPaciente = tool(
+  async ({ cpf }) => {
+    const response = await axios.get(
+      `http://localhost:3000/pacientes?cpf=${cpf}`
+    );
+
+    return response.data;
+  },
+  {
+    name: "buscar_paciente",
+    description: "Busca paciente pelo CPF",
+    schema: z.object({
+      cpf: z.string(),
+    }),
+  }
+);
+
+export const criarPaciente = tool(
+  async ({ cpf, nome }) => {
+    const response = await axios.post(
+      "http://localhost:3000/pacientes",
+      { cpf, nome }
+    );
+
+    return response.data;
+  },
+  {
+    name: "criar_paciente",
+    description: "Cria um novo paciente",
+    schema: z.object({
+      cpf: z.string(),
+      nome: z.string(),
+    }),
+  }
+);
