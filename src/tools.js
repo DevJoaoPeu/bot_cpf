@@ -2,9 +2,16 @@ import axios from "axios";
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 
+const axiosInstance = axios.create({
+  timeout: 5000,
+  headers: {
+    'Connection': 'keep-alive'
+  }
+});
+
 export const buscarPaciente = tool(
   async ({ cpf }) => {
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `http://localhost:3000/pacientes?cpf=${cpf}`
     );
 
@@ -21,7 +28,7 @@ export const buscarPaciente = tool(
 
 export const criarPaciente = tool(
   async ({ cpf, nome, convenio }) => {
-    const response = await axios.post(
+    const response = await axiosInstance.post(
       "http://localhost:3000/pacientes",
       { cpf, nome, convenio }
     );
@@ -41,7 +48,7 @@ export const criarPaciente = tool(
 
 export const buscarConvenio = tool(
   async ({ cpf }) => {
-    const response = await axios.get(
+    const response = await axiosInstance.get(
       `http://localhost:3000/convenio?cpf=${cpf}`
     );
 
