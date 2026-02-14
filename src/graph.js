@@ -88,7 +88,7 @@ graph.addNode("buscar_convenio", async (state) => {
   });
 
   console.log(`Seu cpf é ${state.cpf} e seu convênio é ${convenio}`);
-  return END;
+  return {};
 });
 
 graph.setEntryPoint("pedir_cpf");
@@ -110,6 +110,7 @@ graph.addConditionalEdges(
   }
 );
 
+graph.addEdge("buscar_convenio", END);
 graph.addEdge("pedir_nome", "criar");
 
 const app = graph.compile();
