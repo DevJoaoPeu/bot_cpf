@@ -1,6 +1,7 @@
 import { StateGraph, END } from "@langchain/langgraph";
 import readline from "readline";
-import { buscarPaciente, criarPaciente } from "./tools.js";
+import { buscarConvenio, buscarPaciente, criarPaciente } from "./tools.js";
+import { ConveniosLabelEnum } from "./enums/convenios.enum.js";
 
 function validarCPF(cpf) {
   return /^\d{11}$/.test(cpf);
@@ -74,10 +75,20 @@ graph.addNode("criar", async (state) => {
   await criarPaciente.invoke({
     cpf: state.cpf,
     nome: state.nome,
+    convenio: ConveniosLabelEnum.UNIMED
   });
 
   console.log("🎉 Cadastro realizado com sucesso!");
   return {};
+});
+
+graph.addNode("buscar_convenio", async (state) => {
+  const { convenio } = await buscarConvenio.invoke({
+    cpf: state.cpf,
+  });
+
+  console.log(`Seu cpf é ${state.cpf} e seu convênio é ${convenio}`);
+  return END;
 });
 
 graph.setEntryPoint("pedir_cpf");
@@ -89,13 +100,13 @@ graph.addConditionalEdges(
   "verificar",
   (state) => {
     if (state.resultadoBusca.exists) {
-      return END;
+      return 'buscar_convenio';
     }
     return "pedir_nome";
   },
   {
     pedir_nome: "pedir_nome",
-    [END]: END,
+    buscar_convenio: 'buscar_convenio',
   }
 );
 

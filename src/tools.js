@@ -20,10 +20,10 @@ export const buscarPaciente = tool(
 );
 
 export const criarPaciente = tool(
-  async ({ cpf, nome }) => {
+  async ({ cpf, nome, convenio }) => {
     const response = await axios.post(
       "http://localhost:3000/pacientes",
-      { cpf, nome }
+      { cpf, nome, convenio }
     );
 
     return response.data;
@@ -34,6 +34,24 @@ export const criarPaciente = tool(
     schema: z.object({
       cpf: z.string(),
       nome: z.string(),
+      convenio: z.string(),
+    }),
+  }
+);
+
+export const buscarConvenio = tool(
+  async ({ cpf }) => {
+    const response = await axios.get(
+      `http://localhost:3000/convenio?cpf=${cpf}`
+    );
+
+    return response.data;
+  },
+  {
+    name: "buscar_convenio",
+    description: "Buscar convenio",
+    schema: z.object({
+      cpf: z.string(),
     }),
   }
 );
