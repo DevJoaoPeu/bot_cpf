@@ -22,6 +22,7 @@ const graph = new StateGraph({
   channels: {
     cpf: null,
     nome: null,
+    convenio: null,
     resultadoBusca: null,
   },
 });
@@ -63,7 +64,7 @@ graph.addNode("verificar", async (state) => {
     console.log("Usuário não encontrado.");
   }
 
-  return {}; 
+  return {};
 });
 
 graph.addNode("pedir_nome", async (state) => {
@@ -71,11 +72,21 @@ graph.addNode("pedir_nome", async (state) => {
   return { nome };
 });
 
+graph.addNode("pedir_convenio", async (state) => {
+  const conveniosOptions = Object.values(ConveniosLabelEnum).join(", ");
+
+  const convenio = await perguntar(
+    `Digite seu convenio para cadastro: As opções são: ${conveniosOptions} `,
+  );
+
+  return { convenio };
+});
+
 graph.addNode("criar", async (state) => {
   await criarPaciente.invoke({
     cpf: state.cpf,
     nome: state.nome,
-    convenio: ConveniosLabelEnum.UNIMED
+    convenio: state.convenio,
   });
 
   console.log("🎉 Cadastro realizado com sucesso!");
@@ -100,18 +111,19 @@ graph.addConditionalEdges(
   "verificar",
   (state) => {
     if (state.resultadoBusca.exists) {
-      return 'buscar_convenio';
+      return "buscar_convenio";
     }
     return "pedir_nome";
   },
   {
     pedir_nome: "pedir_nome",
-    buscar_convenio: 'buscar_convenio',
-  }
+    buscar_convenio: "buscar_convenio",
+  },
 );
 
 graph.addEdge("buscar_convenio", END);
-graph.addEdge("pedir_nome", "criar");
+graph.addEdge("pedir_nome", "pedir_convenio");
+graph.addEdge("pedir_convenio", "criar");
 
 const app = graph.compile();
 
