@@ -2,10 +2,7 @@ import { StateGraph, END, Command } from "@langchain/langgraph";
 import readline from "readline";
 import { buscarConvenio, buscarPaciente, criarPaciente } from "./tools.js";
 import { ConveniosLabelEnum } from "./enums/convenios.enum.js";
-
-function validarCPF(cpf) {
-  return /^\d{11}$/.test(cpf);
-}
+import { cpf as CPF } from 'cpf-cnpj-validator'; 
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -25,35 +22,28 @@ const graph = new StateGraph({
     convenio: null,
     resultadoBusca: null,
     convenioValido: null,
+    cpfIsValid: null,
   },
 });
 
 graph.addNode("pedir_cpf", async (state) => {
   const cpf = await perguntar("Digite seu CPF (apenas números): ");
 
-  if (!validarCPF(cpf)) {
-    console.log("CPF inválido. Tente novamente.");
-    return {};
+  const cpfIsValid = CPF.isValid(cpf);
+
+  if (!cpfIsValid) {
+    console.log("❌ CPF inválido. Tente novamente.");
   }
 
-  return { cpf };
+  return { cpf, cpfIsValid };
 });
 
 graph.addNode("buscar", async (state) => {
-  let tentativas = 0;
+  const resultado = await buscarPaciente.invoke({
+    cpf: state.cpf,
+  });
 
-  while (tentativas < 3) {
-    try {
-      const resultado = await buscarPaciente.invoke({
-        cpf: state.cpf,
-      });
-
-      return { resultadoBusca: resultado };
-    } catch (err) {
-      tentativas++;
-      console.log("Erro ao buscar. Tentando novamente...");
-    }
-  }
+  return { resultadoBusca: resultado };
 
   throw new Error("Falha após 3 tentativas.");
 });
@@ -77,7 +67,7 @@ graph.addNode("pedir_convenio", async (state) => {
   const conveniosOptions = Object.values(ConveniosLabelEnum);
 
   const convenio = await perguntar(
-    `Digite seu convênio (${conveniosOptions.join(", ")}): `
+    `Digite seu convênio (${conveniosOptions.join(", ")}): `,
   );
 
   const valido = conveniosOptions.includes(convenio);
@@ -110,8 +100,6 @@ graph.addNode("buscar_convenio", async (state) => {
 });
 
 graph.setEntryPoint("pedir_cpf");
-
-graph.addEdge("pedir_cpf", "buscar");
 graph.addEdge("buscar", "verificar");
 
 graph.addConditionalEdges(
@@ -137,7 +125,19 @@ graph.addConditionalEdges(
   {
     pedir_convenio: "pedir_convenio",
     proximo_node: "criar",
-  }
+  },
+);
+
+graph.addConditionalEdges(
+  "pedir_cpf",
+  (state) => {
+    if (!state.cpfIsValid) return "pedir_cpf";
+    return "proximo_node";
+  },
+  {
+    pedir_cpf: "pedir_cpf",
+    proximo_node: "buscar",
+  },
 );
 
 graph.addEdge("buscar_convenio", END);
