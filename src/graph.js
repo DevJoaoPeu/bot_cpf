@@ -1,4 +1,4 @@
-import { StateGraph, END } from "@langchain/langgraph";
+import { StateGraph, END, Command } from "@langchain/langgraph";
 import readline from "readline";
 import { buscarConvenio, buscarPaciente, criarPaciente } from "./tools.js";
 import { ConveniosLabelEnum } from "./enums/convenios.enum.js";
@@ -24,6 +24,7 @@ const graph = new StateGraph({
     nome: null,
     convenio: null,
     resultadoBusca: null,
+    convenioValido: null,
   },
 });
 
@@ -73,13 +74,19 @@ graph.addNode("pedir_nome", async (state) => {
 });
 
 graph.addNode("pedir_convenio", async (state) => {
-  const conveniosOptions = Object.values(ConveniosLabelEnum).join(", ");
+  const conveniosOptions = Object.values(ConveniosLabelEnum);
 
   const convenio = await perguntar(
-    `Digite seu convenio para cadastro: As opções são: ${conveniosOptions} `,
+    `Digite seu convênio (${conveniosOptions.join(", ")}): `
   );
 
-  return { convenio };
+  const valido = conveniosOptions.includes(convenio);
+
+  if (!valido) {
+    console.log("❌ Convênio inválido.");
+  }
+
+  return { convenio, convenioValido: valido };
 });
 
 graph.addNode("criar", async (state) => {
@@ -121,9 +128,20 @@ graph.addConditionalEdges(
   },
 );
 
+graph.addConditionalEdges(
+  "pedir_convenio",
+  (state) => {
+    if (!state.convenioValido) return "pedir_convenio";
+    return "proximo_node";
+  },
+  {
+    pedir_convenio: "pedir_convenio",
+    proximo_node: "criar",
+  }
+);
+
 graph.addEdge("buscar_convenio", END);
 graph.addEdge("pedir_nome", "pedir_convenio");
-graph.addEdge("pedir_convenio", "criar");
 
 const app = graph.compile();
 
