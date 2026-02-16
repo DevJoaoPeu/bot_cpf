@@ -1,8 +1,14 @@
 import { StateGraph, END, Command } from "@langchain/langgraph";
 import readline from "readline";
-import { buscarConvenio, buscarPaciente, criarPaciente } from "./tools.js";
+import {
+  buscarConvenio,
+  buscarPaciente,
+  chooseFlow,
+  criarPaciente,
+} from "./tools.js";
 import { ConveniosLabelEnum } from "./enums/convenios.enum.js";
-import { cpf as CPF } from 'cpf-cnpj-validator'; 
+import { cpf as CPF } from "cpf-cnpj-validator";
+import { ChooseFlowEnum } from "./enums/choose-flow.enum.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -23,7 +29,27 @@ const graph = new StateGraph({
     resultadoBusca: null,
     convenioValido: null,
     cpfIsValid: null,
+    prompt: null,
   },
+});
+
+graph.addNode("decidir_flow", async (state) => {
+  const prompt = await perguntar(`
+    ========================================
+    👋 Olá! Tudo bem?
+
+    O que você deseja fazer?
+
+    - Buscar dados de um paciente
+    - Cadastrar um novo paciente
+
+    Digite a opção desejada: 
+    ========================================
+  `);
+
+  const { response } = await chooseFlow.invoke({ prompt });
+
+  return { prompt: response };
 });
 
 graph.addNode("pedir_cpf", async (state) => {
@@ -99,8 +125,32 @@ graph.addNode("buscar_convenio", async (state) => {
   return {};
 });
 
-graph.setEntryPoint("pedir_cpf");
+graph.setEntryPoint("decidir_flow");
 graph.addEdge("buscar", "verificar");
+
+graph.addConditionalEdges(
+  "decidir_flow",
+  (state) => {
+    const condition =
+      state.prompt === ChooseFlowEnum.CREATE_PATIENT ||
+      state.prompt === ChooseFlowEnum.SEARCH_PATIENT;
+
+    if (condition) return "pedir_cpf";
+    
+    // if (state.prompt === ChooseFlowEnum.SEARCH_CONVENIO) {
+    //   return "pedir_cpf";
+    // }
+
+    console.log("❌ Opção inválida, tente novamente.");
+
+    return "decidir_flow";
+  },
+  {
+    // buscar_convenio: "buscar_convenio",
+    pedir_cpf: "pedir_cpf",
+    decidir_flow: "decidir_flow",
+  },
+);
 
 graph.addConditionalEdges(
   "verificar",

@@ -62,3 +62,21 @@ export const buscarConvenio = tool(
     }),
   }
 );
+
+export const chooseFlow = tool(
+  async ({ prompt }) => {
+    const response = await axiosInstance.post(
+      `http://localhost:3000/flow`,
+      { prompt }
+    );
+
+    return response.data;
+  },
+  {
+    name: "buscar_convenio",
+    description: "Buscar convenio",
+    schema: z.object({
+      prompt: z.string(),
+    }),
+  }
+);
